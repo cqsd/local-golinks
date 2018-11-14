@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+echo "adding $1 --> $2 to $REDIRECTS_FILE"
+echo -n '[ENTER] to continue...'
+read
+
+echo "$1,$2" | sed 's/ //g' >> $REDIRECTS_FILE
+echo
+echo Added. Current links:
+
+cat $REDIRECTS_FILE
