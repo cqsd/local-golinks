@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import codecs
-import json
 import os
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -39,26 +38,24 @@ def redirect_handler_class(port, path_file=os.getenv('REDIRECTS_FILE', './paths.
             self.paths = load_paths(path_file)
 
             super(RedirectServerHandler, self).__init__(*args, **kwargs)
-        
+
         def do_GET(self):
             # get rid of leading slashes
             path = ''.join(dropwhile(lambda c: c == '/', self.path))
             if path in self.paths.keys():
                 self.send_response(302)
                 self.send_header('Location', self.paths[path])
-                self.end_headers()  # see base class
             else:
                 self.send_headers(path='404.html', content_type='text/html', response=404)
                 self.wfile.write(codecs.encode(
                     NOT_FOUND.format(path=path, host=self.host, port=self.port),
                     'ascii')
                 )
-                self.end_headers()  # see base class
+            self.end_headers()  # see base class
 
         def send_headers(self, path, content_type, response=200):
             self.send_response(response)
             self.send_header('Content-type', content_type)
-            self.end_headers()
 
     return RedirectServerHandler
 
@@ -69,8 +66,6 @@ if __name__ == '__main__':
 
     port = 8000
     if len(sys.argv) > 1:
-        # PDF passes itself as first arg, so user command line args
-        # will be +1 compared to normal
         port = int(sys.argv[1])
     address = ('', port)
 
