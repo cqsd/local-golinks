@@ -40,11 +40,14 @@ def redirect_handler_class(port, path_file=os.getenv('REDIRECTS_FILE', './paths.
             super(RedirectServerHandler, self).__init__(*args, **kwargs)
 
         def do_GET(self):
-            # get rid of leading slashes
-            path = ''.join(dropwhile(lambda c: c == '/', self.path))
+            # get rid of leading slashes. technically path should be like, short_path?
+            path, *_rest = ''.join(dropwhile(lambda c: c == '/', self.path)).split('/')
+            rest = '/'.join(_rest)
+            full_path = os.path.join(self.paths[path], rest)
+
             if path in self.paths.keys():
                 self.send_response(302)
-                self.send_header('Location', self.paths[path])
+                self.send_header('Location', full_path)
             else:
                 self.send_headers(path='404.html', content_type='text/html', response=404)
                 self.wfile.write(codecs.encode(

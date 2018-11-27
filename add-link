@@ -1,12 +1,41 @@
 #!/bin/bash
 set -e
 
-echo "adding $1 --> $2 to $REDIRECTS_FILE"
-echo -n '[ENTER] to continue...'
-read
+usage() {
+    echo "$0 [-hle] SHORT FULL" 1>&2
+    exit 1
+}
 
-echo "$1,$2" | sed 's/ //g' >> $REDIRECTS_FILE
-echo
-echo Added. Current links:
+list() {
+    echo "current REDIRECTS_FILE is ${REDIRECTS_FILE:-not set}"
+    echo
+    cat $REDIRECTS_FILE 2>/dev/null || exit 1
+}
 
-cat $REDIRECTS_FILE
+run() {
+    echo "adding $1 --> $2 to $REDIRECTS_FILE"
+    echo -n '[ENTER] to continue...'
+    read
+
+    # this is a bug
+    echo "$1,$2" | sed 's/ //g' >> $REDIRECTS_FILE
+    echo
+    list
+}
+
+case $1 in
+    ''|-h|--help)
+        usage
+        ;;
+    -l|--list)
+        list
+        ;;
+    *)
+        if [ -z $REDIRECTS_FILE ]; then
+            echo "no REDIRECTS_FILE set" 1>&2
+            usage
+        else
+            run $1 $2
+        fi
+        ;;
+esac
