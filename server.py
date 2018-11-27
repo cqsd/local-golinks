@@ -43,9 +43,9 @@ def redirect_handler_class(port, path_file=os.getenv('REDIRECTS_FILE', './paths.
             # get rid of leading slashes. technically path should be like, short_path?
             path, *_rest = ''.join(dropwhile(lambda c: c == '/', self.path)).split('/')
             rest = '/'.join(_rest)
-            full_path = os.path.join(self.paths[path], rest)
 
             if path in self.paths.keys():
+                full_path = os.path.join(self.paths[path], rest)
                 self.send_response(302)
                 self.send_header('Location', full_path)
             else:
