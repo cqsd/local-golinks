@@ -29,6 +29,33 @@ def load_paths(path_file):
     return paths
 
 
+# trying to avoid deps like jinja
+def paths_to_index(paths):
+    '''`paths` is a dict of short:full'''
+    acc = (
+        '<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">'
+        '<html><head>'
+        '<title>Paths</title>'
+        '</head><body>'
+        '<h1>Current Path Config</h1>'
+        '<table>'
+    )
+    for short, full in sorted(paths.items(), key=lambda k: k[0]):
+        acc += (
+            '<tr>'
+            '<td><a href="http://go/{short}">{short}</td>'
+            '<td><a href="{full}">{full}</td>'
+            '</tr>'
+        ).format(short=short, full=full)
+    acc += (
+        '</table>'
+        '<hr>'
+        '<address>Garbage Server/0.0.1 at {host} Port {port}</address>'
+        '</body></html>'
+    )
+    return acc
+
+
 def redirect_handler_class(port, path_file=os.getenv('REDIRECTS_FILE', './paths.txt')):
     class RedirectServerHandler(BaseHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
@@ -42,10 +69,16 @@ def redirect_handler_class(port, path_file=os.getenv('REDIRECTS_FILE', './paths.
         def do_GET(self):
             # get rid of leading slashes. technically path should be like, short_path?
             path, *_rest = ''.join(dropwhile(lambda c: c == '/', self.path)).split('/')
-            rest = '/'.join(_rest)
+            rest = '/'.join(_rest) if _rest else ''
 
-            if path in self.paths.keys():
-                full_path = os.path.join(self.paths[path], rest)
+            if not path or path == '/':
+                self.send_headers(path='404.html', content_type='text/html', response=404)
+                self.wfile.write(codecs.encode(
+                    paths_to_index(self.paths).format(path=path, host=self.host, port=self.port),
+                    'ascii')
+                )
+            elif path in self.paths.keys():
+                full_path = os.path.join(self.paths[path], rest) if rest else self.paths[path]
                 self.send_response(302)
                 self.send_header('Location', full_path)
             else:
