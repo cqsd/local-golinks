@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+import codecs
+import os
+import sqlite3
+import sys
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from itertools import dropwhile
+
+
+NOT_FOUND = '''
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>The requested URL /{path} was not found on this server.</p>
+<hr>
+<address>Garbage Server/0.0.1 at {host} Port {port}</address>
+</body></html>
+'''
+
+
+# trying to avoid deps like jinja
+def paths_to_index(paths):
+    '''`paths` is a dict of short:full'''
+    acc = (
+        '<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">'
+        '<html><head>'
+        '<title>Paths</title>'
+        '</head><body>'
+        '<h1>Current Path Config</h1>'
+        '<table>'
+        '<tr>'
+        '<td><b>short</b></td>'
+        '<td><b>visits</b></td>'
+        '<td><b>full</b></td>'
+        '</tr>'
+    )
+    for visits, short, full in sorted(paths, reverse=True):
+        acc += (
+            '<tr>'
+            '<td><a target="_blank" href="http://go/{short}">{short}</a></td>'
+            '<td>{visits}</td>'
+            '<td><a target="_blank" href="{full}">{full}</a></td>'
+            '</tr>'
+        ).format(short=short, visits=visits, full=full)
+    acc += (
+        '</table>'
+        '<hr>'
+        '<address>Garbage Server/0.0.1 at {host} Port {port}</address>'
+        '</body></html>'
+    )
+    return acc
+
+
+def load_paths(paths_file):
+    paths = dict()
+    with open(paths_file, 'r') as f:
+        for line in f:
+            short, *full = map(lambda s: s.strip(), line.split(','))
+            paths[short] = ''.join(full)
+
+    return paths
+
+
+def redirect_handler_class(port, paths_file):
+    class RedirectServerHandler(BaseHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            self.host = 'buy-local'
+            self.port = port
+            self.paths_file = paths_file
+            self.db = sqlite3.connect(paths_file)
+
+            super(RedirectServerHandler, self).__init__(*args, **kwargs)
+
+        def do_GET(self):
+            # get rid of leading slashes. technically path should be like, short_path?
+            path, *_rest = ''.join(dropwhile(lambda c: c == '/', self.path)).split('/')
+            rest = '/'.join(_rest) if _rest else ''
+            record = self.db.execute('select full from Links where short = ?', [path]).fetchone()
+
+            if not path or path == '/':
+                self.send_headers(path='404.html', content_type='text/html', response=404)
+                records = self.db.execute('select visits, short, full from Links').fetchall()
+                self.wfile.write(codecs.encode(
+                    paths_to_index(records).format(path=path, host=self.host, port=self.port),
+                    'ascii')
+                )
+            elif record:
+                full_path = os.path.join(record[0], rest) if rest else record[0]
+                self.send_response(302)
+                self.send_header('Location', full_path)
+                self.db.execute('update Links set visits = visits + 1 where short = ?', [path])
+                self.db.commit()
+            else:
+                self.send_headers(path='404.html', content_type='text/html', response=404)
+                self.wfile.write(codecs.encode(
+                    NOT_FOUND.format(path=path, host=self.host, port=self.port),
+                    'ascii')
+                )
+            self.end_headers()  # see base class
+
+        def send_headers(self, path, content_type, response=200):
+            self.send_response(response)
+            self.send_header('Content-type', content_type)
+
+    return RedirectServerHandler
+
+
+def list_paths(args):
+    with sqlite3.connect(args.paths_file) as db:
+        records = db.execute('select short, full, visits from Links').fetchall()
+
+    left_width = max([len(short) for short, *_ in records])
+    right_width = 60  # totally arbitrary
+    print('  # {:{width}} --> {:.60}'.format('short', 'full', width=left_width))
+    for short, full, visits in sorted(records):
+        if len(full) >= right_width:
+            full = full[:right_width - 3] + '...'
+        print('{:3} {:{width}} --> {:.60}'.format(visits or ' ', short, full, width=left_width))
+
+
+def add_path(args):
+    short, full = args.short, args.full
+    with sqlite3.connect(args.paths_file) as db:
+        db.execute(
+            'insert into Links (short, full) values (?, ?)',
+            [short, full])
+        db.commit()
+        print('Added {} --> {}'.format(short, full))
+
+
+def rm_path(args):
+    short = args.short
+    with sqlite3.connect(args.paths_file) as db:
+        record = db.execute(
+            'select short, full from Links where short = ?',
+            [short]).fetchone()
+    if record:
+        db.execute(
+            'delete from Links where short = ?',
+            [short])
+        db.commit()
+        print('Removed {} --> {}'.format(*record))
+
+
+def run_server(args):
+    import socket
+
+    port = args.port
+    paths_file = args.paths_file
+    address = ('', port)
+
+    try:
+        httpd = HTTPServer(address, redirect_handler_class(port, paths_file))
+        sa = httpd.socket.getsockname()
+        sys.stdout.write(
+            'Serving HTTP on {} port {} (http://{}:{}/) ...\n'.format(*(sa * 2))
+        )
+        httpd.serve_forever()
+    except socket.error:
+        sys.stderr.write(
+            'Error opening socket for port {}.\n'
+            'You can pass a different port to the server as an argument.\n'
+            ''.format(port)  # mfw ''.format
+        )
+    except KeyboardInterrupt:
+        sys.stderr.write(
+            '\nKeyboard interrupt received, exiting.\n'
+        )
+    except Exception:
+        sys.stderr.write(
+            '\nLol, something broke.\n'
+        )
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser('go-slash', description='Local go/ server admin tool')
+    parser.set_defaults(func=None)
+    parser.add_argument(
+        '-f',
+        '--paths-file',
+        help='specific sqlite db to list from',
+        type=str,
+        default=os.getenv('LOCAL_GO_SLASH_DB_FILE'))
+
+    subparsers = parser.add_subparsers(title='subcommands')
+
+    list_subparser = subparsers.add_parser('list')
+    list_subparser.set_defaults(func=list_paths)
+
+    add_subparser = subparsers.add_parser('add')
+    add_subparser.add_argument('short', help='Short version of the link')
+    add_subparser.add_argument('full', help='Full link')
+    add_subparser.set_defaults(func=add_path)
+
+    rm_subparser = subparsers.add_parser('rm', help='Remove a link')
+    rm_subparser.add_argument('short', help='Short version of the link to remove')
+    rm_subparser.set_defaults(func=rm_path)
+
+    run_subparser = subparsers.add_parser('run')
+    run_subparser.add_argument('port', help='port to run on', type=int, default=8000)
+    run_subparser.set_defaults(func=run_server)
+
+    args = parser.parse_args()
+
+    if args.func:
+        if not args.paths_file:
+            sys.stderr.write(
+                'No paths file specified. Did you set LOCAL_GO_SLASH_REDIRECTS_FILE?\n'
+            )
+            sys.exit(1)
+        args.func(args)
+    else:
+        parser.print_usage()
