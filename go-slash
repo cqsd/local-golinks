@@ -132,17 +132,20 @@ def add_path(args):
 
 
 def rm_path(args):
-    short = args.short
-    with sqlite3.connect(args.paths_file) as db:
-        record = db.execute(
-            'select short, full from Links where short = ?',
-            [short]).fetchone()
-    if record:
-        db.execute(
-            'delete from Links where short = ?',
-            [short])
-        db.commit()
-        print('Removed {} --> {}'.format(*record))
+    _short = args.short
+    for short in _short:
+        with sqlite3.connect(args.paths_file) as db:
+            record = db.execute(
+                'select short, full from Links where short = ?',
+                [short]).fetchone()
+        if record:
+            db.execute(
+                'delete from Links where short = ?',
+                [short])
+            db.commit()
+            print('Removed {} --> {}'.format(*record))
+        else:
+            print('Couldn\'t find {}'.format(short))
 
 
 def run_server(args):
@@ -190,7 +193,7 @@ if __name__ == '__main__':
 
     subparsers = parser.add_subparsers(title='subcommands')
 
-    list_subparser = subparsers.add_parser('list')
+    list_subparser = subparsers.add_parser('list', aliases=['ls'])
     list_subparser.set_defaults(func=list_paths)
 
     add_subparser = subparsers.add_parser('add')
@@ -199,7 +202,7 @@ if __name__ == '__main__':
     add_subparser.set_defaults(func=add_path)
 
     rm_subparser = subparsers.add_parser('rm', help='Remove a link')
-    rm_subparser.add_argument('short', help='Short version of the link to remove')
+    rm_subparser.add_argument('short', help='Short version of the link to remove', nargs='+')
     rm_subparser.set_defaults(func=rm_path)
 
     run_subparser = subparsers.add_parser('run')
