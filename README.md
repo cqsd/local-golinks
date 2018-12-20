@@ -60,9 +60,12 @@ subcommands:
     run                 Run the server
 ```
 
-#### Example: Add a link
+#### Example: Add a link and run
 ```
-go-slash add tweet https://twitter.com/
+uid=501|~/b/s/local-go-slash $ go-slash add tweet https://twitter.com
+Added tweet --> https://twitter.com
+uid=501|~/b/s/local-go-slash $ go-slash run 80
+Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 ```
 
 Assuming you've added the `/etc/hosts` entry, you can now go to `go/tweet`
