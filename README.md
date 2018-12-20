@@ -19,6 +19,7 @@ access this thing at (for example) `go/`. Here's mine:
 255.255.255.255 broadcasthost
 ::1             localhost
 
+# Add this
 127.0.0.1 go
 ```
 
@@ -39,3 +40,30 @@ ln -sf ~/bin/src/local-go-slash/go-slash ~/bin/
 
 Then add `~/bin` to your path, and set `LOCAL_GO_SLASH_DB_FILE` in your env
 pointing to `~/bin/src/local-go-slash/links.db`.
+
+## Usage
+```
+usage: go-slash [-h] [-f PATHS_FILE] {list,ls,add,rm,run} ...
+
+Local go/ server admin tool
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -f PATHS_FILE, --paths-file PATHS_FILE
+                        specific sqlite db to list from
+
+subcommands:
+  {list,ls,add,rm,run}
+    list (ls)           List available links
+    add                 Add a link
+    rm                  Remove a link
+    run                 Run the server
+```
+
+#### Example: Add a link
+```
+go-slash add tweet https://twitter.com/
+```
+
+Assuming you've added the `/etc/hosts` entry, you can now go to `go/tweet`
+in your browser, and will be redirected to Twitter.
