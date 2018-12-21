@@ -81,7 +81,8 @@ def redirect_handler_class(port, paths_file):
             record = self.db.execute('select full from Links where short = ?', [path]).fetchone()
 
             if not path or path == '/':
-                self.send_headers(path='404.html', content_type='text/html', response=404)
+                self.send_headers(path='index.html', content_type='text/html', response=200)
+                self.end_headers()  # see base class
                 records = self.db.execute('select visits, short, full from Links').fetchall()
                 self.wfile.write(codecs.encode(
                     paths_to_index(records).format(path=path, host=self.host, port=self.port),
@@ -91,15 +92,16 @@ def redirect_handler_class(port, paths_file):
                 full_path = os.path.join(record[0], rest) if rest else record[0]
                 self.send_response(302)
                 self.send_header('Location', full_path)
+                self.end_headers()  # see base class
                 self.db.execute('update Links set visits = visits + 1 where short = ?', [path])
                 self.db.commit()
             else:
                 self.send_headers(path='404.html', content_type='text/html', response=404)
+                self.end_headers()  # see base class
                 self.wfile.write(codecs.encode(
                     NOT_FOUND.format(path=path, host=self.host, port=self.port),
                     'ascii')
                 )
-            self.end_headers()  # see base class
 
         def send_headers(self, path, content_type, response=200):
             self.send_response(response)
