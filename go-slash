@@ -112,15 +112,35 @@ def redirect_handler_class(port, paths_file):
 
 def list_paths(args):
     with sqlite3.connect(args.paths_file) as db:
-        records = db.execute('select short, full, visits from Links').fetchall()
+        records = []
+        if args.short:
+            for short in args.short:
+                record = db.execute(
+                    'select short, full, visits from Links where short = ?',
+                    [short]
+                ).fetchone()
+                if record:
+                    records.append(record)
+        else:
+            records += db.execute('select short, full, visits from Links').fetchall()
 
-    left_width = max([len(short) for short, *_ in records])
-    right_width = 60  # totally arbitrary
-    print('  # {:{width}} --> {:.60}'.format('short', 'full', width=left_width))
-    for short, full, visits in sorted(records):
-        if len(full) >= right_width:
-            full = full[:right_width - 3] + '...'
-        print('{:3} {:{width}} --> {:.60}'.format(visits or ' ', short, full, width=left_width))
+    if records:
+        left_width = max([len(short) for short, *_ in records])
+        right_width = 60  # totally arbitrary
+        if not args.quiet:
+            print('  # {:{width}} --> {:.60}'.format(
+                'short', 'full', width=left_width))
+        for short, full, visits in sorted(records):
+            if len(full) >= right_width:
+                if args.long:
+                    pass
+                else:
+                    full = full[:right_width - 3] + '...'
+            print('{:3} {:{left_width}} --> {}'.format(
+                visits or ' ',
+                short,
+                full,
+                left_width=left_width))
 
 
 def add_path(args):
@@ -199,6 +219,9 @@ if __name__ == '__main__':
         'list',
         help='List available links',
         aliases=['ls'])
+    list_subparser.add_argument('short', metavar='SHORT', help='specific links to list', nargs='*')
+    list_subparser.add_argument('--quiet', '-q', help='Quiet output', action='store_true', default=False)
+    list_subparser.add_argument('--long', '-l', help='output full link', action='store_true', default=False)
     list_subparser.set_defaults(func=list_paths)
 
     add_subparser = subparsers.add_parser('add', help='Add a link')
