@@ -110,7 +110,7 @@ def redirect_handler_class(port, paths_file):
     return RedirectServerHandler
 
 
-def list_paths(args):
+def list_paths_cmd(args):
     with sqlite3.connect(args.paths_file) as db:
         records = []
         if args.short:
@@ -127,9 +127,6 @@ def list_paths(args):
     if records:
         left_width = max([len(short) for short, *_ in records])
         right_width = 60  # totally arbitrary
-        if not args.quiet:
-            print('  # {:{width}} --> {:.60}'.format(
-                'short', 'full', width=left_width))
         for short, full, visits in sorted(records):
             if len(full) >= right_width:
                 if args.long:
@@ -143,7 +140,7 @@ def list_paths(args):
                 left_width=left_width))
 
 
-def add_path(args):
+def add_path_cmd(args):
     short, full = args.short, args.full
     with sqlite3.connect(args.paths_file) as db:
         db.execute(
@@ -153,7 +150,7 @@ def add_path(args):
         print('Added {} --> {}'.format(short, full))
 
 
-def rm_path(args):
+def rm_path_cmd(args):
     _short = args.short
     for short in _short:
         with sqlite3.connect(args.paths_file) as db:
@@ -170,7 +167,7 @@ def rm_path(args):
             print('Couldn\'t find {}'.format(short))
 
 
-def run_server(args):
+def run_server_cmd(args):
     import socket
 
     port = args.port
@@ -220,22 +217,21 @@ if __name__ == '__main__':
         help='List available links',
         aliases=['ls'])
     list_subparser.add_argument('short', metavar='SHORT', help='specific links to list', nargs='*')
-    list_subparser.add_argument('--quiet', '-q', help='Quiet output', action='store_true', default=False)
     list_subparser.add_argument('--long', '-l', help='output full link', action='store_true', default=False)
-    list_subparser.set_defaults(func=list_paths)
+    list_subparser.set_defaults(func=list_paths_cmd)
 
     add_subparser = subparsers.add_parser('add', help='Add a link')
     add_subparser.add_argument('short', help='Short version of the link')
     add_subparser.add_argument('full', help='Full link')
-    add_subparser.set_defaults(func=add_path)
+    add_subparser.set_defaults(func=add_path_cmd)
 
     rm_subparser = subparsers.add_parser('rm', help='Remove a link')
     rm_subparser.add_argument('short', help='Short version of the link to remove', nargs='+')
-    rm_subparser.set_defaults(func=rm_path)
+    rm_subparser.set_defaults(func=rm_path_cmd)
 
     run_subparser = subparsers.add_parser('run', help='Run the server')
     run_subparser.add_argument('port', help='port to run on', type=int, default=8000)
-    run_subparser.set_defaults(func=run_server)
+    run_subparser.set_defaults(func=run_server_cmd)
 
     args = parser.parse_args()
 
