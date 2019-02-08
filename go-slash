@@ -37,7 +37,7 @@ def paths_to_index(paths):
         '<td><b>full</b></td>'
         '</tr>'
     )
-    for visits, short, full in sorted(paths, reverse=True):
+    for visits, short, full in paths:
         acc += (
             '<tr>'
             '<td><a target="_blank" href="http://go/{short}">{short}</a></td>'
@@ -83,7 +83,9 @@ def redirect_handler_class(port, paths_file):
             if not path or path == '/':
                 self.send_headers(path='index.html', content_type='text/html', response=200)
                 self.end_headers()  # see base class
-                records = self.db.execute('select visits, short, full from Links').fetchall()
+                records = self.db.execute(
+                    'select visits, short, full from Links order by visits desc, short'
+                ).fetchall()
                 self.wfile.write(codecs.encode(
                     paths_to_index(records).format(path=path, host=self.host, port=self.port),
                     'ascii')
@@ -122,7 +124,10 @@ def list_paths_cmd(args):
                 if record:
                     records.append(record)
         else:
-            records += db.execute('select short, full, visits from Links order by visits desc, short').fetchall()
+            records += db.execute(
+                'select short, full, visits from Links'
+                ' order by visits desc, short'
+            ).fetchall()
 
     if records:
         left_width = max([len(short) for short, *_ in records])
@@ -177,7 +182,9 @@ def mv_path_cmd(args):
         if record:
             new_record = [new] + list(record)
             record = db.execute(
-                'insert into Links (short, full, visits, accessed, created) values (?, ?, ?, ?, ?)',
+                'insert into Links'
+                ' (short, full, visits, accessed, created)'
+                ' values (?, ?, ?, ?, ?)',
                 new_record).fetchone()
             db.execute(
                 'delete from Links where short = ?',
