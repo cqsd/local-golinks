@@ -122,12 +122,12 @@ def list_paths_cmd(args):
                 if record:
                     records.append(record)
         else:
-            records += db.execute('select short, full, visits from Links').fetchall()
+            records += db.execute('select short, full, visits from Links order by visits desc, short').fetchall()
 
     if records:
         left_width = max([len(short) for short, *_ in records])
         right_width = 60  # totally arbitrary
-        for short, full, visits in sorted(records):
+        for short, full, visits in records:
             if len(full) >= right_width:
                 if args.long:
                     pass
@@ -165,6 +165,26 @@ def rm_path_cmd(args):
             print('Removed {} --> {}'.format(*record))
         else:
             print('Couldn\'t find {}'.format(short))
+
+
+def mv_path_cmd(args):
+    old = args.old
+    new = args.new
+    with sqlite3.connect(args.paths_file) as db:
+        record = db.execute(
+            'select full, visits, accessed, created from Links where short = ?',
+            [old]).fetchone()
+        if record:
+            new_record = [new] + list(record)
+            record = db.execute(
+                'insert into Links (short, full, visits, accessed, created) values (?, ?, ?, ?, ?)',
+                new_record).fetchone()
+            db.execute(
+                'delete from Links where short = ?',
+                [old])
+            print('Renamed "{}" to "{}"'.format(old, new))
+        else:
+            print('Couldn\'t find {}'.format(old))
 
 
 def run_server_cmd(args):
@@ -228,6 +248,11 @@ if __name__ == '__main__':
     rm_subparser = subparsers.add_parser('rm', help='Remove a link')
     rm_subparser.add_argument('short', help='Short version of the link to remove', nargs='+')
     rm_subparser.set_defaults(func=rm_path_cmd)
+
+    mv_subparser = subparsers.add_parser('mv', help='Rename a link')
+    mv_subparser.add_argument('old', help='Short version of the link to rename')
+    mv_subparser.add_argument('new', help='New name')
+    mv_subparser.set_defaults(func=mv_path_cmd)
 
     run_subparser = subparsers.add_parser('run', help='Run the server')
     run_subparser.add_argument('port', help='port to run on', type=int, default=8000)
