@@ -1,8 +1,5 @@
 ## local-go-slash
-
-Simple Python link shortener intended to run on `localhost`. I use mine to
-provide a local `go/` link shortener, since my company doesn't yet have one
-(or any extant want for one).
+local link shortener
 
 ## Setup
 You'll need an `/etc/hosts` entry or something equivalent if you want to
@@ -43,7 +40,7 @@ pointing to `~/bin/src/local-go-slash/links.db`.
 
 ## Usage
 ```
-usage: go-slash [-h] [-f PATHS_FILE] {list,ls,add,rm,run} ...
+usage: go-slash [-h] [-f PATHS_FILE] {list,ls,add,rm,mv,run} ...
 
 Local go/ server admin tool
 
@@ -53,10 +50,11 @@ optional arguments:
                         specific sqlite db to list from
 
 subcommands:
-  {list,ls,add,rm,run}
+  {list,ls,add,rm,mv,run}
     list (ls)           List available links
     add                 Add a link
     rm                  Remove a link
+    mv                  Rename a link
     run                 Run the server
 ```
 
