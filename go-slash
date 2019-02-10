@@ -75,30 +75,49 @@ def redirect_handler_class(port, paths_file):
             super(RedirectServerHandler, self).__init__(*args, **kwargs)
 
         def do_GET(self):
-            # get rid of leading slashes. technically path should be like, short_path?
-            path, *_rest = ''.join(dropwhile(lambda c: c == '/', self.path)).split('/')
+            # get rid of leading slashes. technically path should be like,
+            # short_path?
+            path, *_rest = ''.join(
+                dropwhile(lambda c: c == '/', self.path)
+            ).split('/')
             rest = '/'.join(_rest) if _rest else ''
-            record = self.db.execute('select full from Links where short = ?', [path]).fetchone()
+            record = self.db.execute(
+                'select full from Links where short = ?',
+                [path]).fetchone()
 
             if not path or path == '/':
-                self.send_headers(path='index.html', content_type='text/html', response=200)
+                self.send_headers(
+                    path='index.html',
+                    content_type='text/html',
+                    response=200)
                 self.end_headers()  # see base class
                 records = self.db.execute(
-                    'select visits, short, full from Links order by visits desc, short'
+                    'select visits, short, full from Links'
+                    ' order by visits desc, short'
                 ).fetchall()
-                self.wfile.write(codecs.encode(
-                    paths_to_index(records).format(path=path, host=self.host, port=self.port),
-                    'ascii')
+                self.wfile.write(
+                    codecs.encode(
+                        paths_to_index(records).format(
+                            path=path,
+                            host=self.host,
+                            port=self.port),
+                        'ascii')
                 )
             elif record:
                 full_path = os.path.join(record[0], rest) if rest else record[0]
                 self.send_response(302)
                 self.send_header('Location', full_path)
                 self.end_headers()  # see base class
-                self.db.execute('update Links set visits = visits + 1 where short = ?', [path])
+                self.db.execute(
+                    'update Links set visits = visits + 1'
+                    ' where short = ?',
+                    [path])
                 self.db.commit()
             else:
-                self.send_headers(path='404.html', content_type='text/html', response=404)
+                self.send_headers(
+                    path='404.html',
+                    content_type='text/html',
+                    response=404)
                 self.end_headers()  # see base class
                 self.wfile.write(codecs.encode(
                     NOT_FOUND.format(path=path, host=self.host, port=self.port),
@@ -175,23 +194,30 @@ def rm_path_cmd(args):
 def mv_path_cmd(args):
     old = args.old
     new = args.new
-    with sqlite3.connect(args.paths_file) as db:
-        record = db.execute(
-            'select full, visits, accessed, created from Links where short = ?',
-            [old]).fetchone()
-        if record:
-            new_record = [new] + list(record)
+    try:
+        with sqlite3.connect(args.paths_file) as db:
             record = db.execute(
-                'insert into Links'
-                ' (short, full, visits, accessed, created)'
-                ' values (?, ?, ?, ?, ?)',
-                new_record).fetchone()
-            db.execute(
-                'delete from Links where short = ?',
-                [old])
-            print('Renamed "{}" to "{}"'.format(old, new))
-        else:
-            print('Couldn\'t find {}'.format(old))
+                'select full, visits, accessed, created from Links'
+                ' where short = ?',
+                [old]).fetchone()
+            if record:
+                new_record = [new] + list(record)
+                record = db.execute(
+                    'insert into Links'
+                    ' (short, full, visits, accessed, created)'
+                    ' values (?, ?, ?, ?, ?)',
+                    new_record).fetchone()
+                db.execute(
+                    'delete from Links where short = ?',
+                    [old])
+                print('Renamed "{}" to "{}"'.format(old, new))
+            else:
+                print('Couldn\'t find {}'.format(old))
+    except sqlite3.IntegrityError:
+        print('Failed renaming {old} to {new} ({new} already exists)'.format(
+            old=repr(old),
+            new=repr(new)
+        ))
 
 
 def run_server_cmd(args):
@@ -270,7 +296,8 @@ if __name__ == '__main__':
     if args.func:
         if not args.paths_file:
             sys.stderr.write(
-                'No paths file specified. Did you set LOCAL_GO_SLASH_REDIRECTS_FILE?\n'
+                'No paths file specified.\n'
+                'Did you set LOCAL_GO_SLASH_REDIRECTS_FILE?\n'
             )
             sys.exit(1)
         args.func(args)
