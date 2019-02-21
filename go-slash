@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import codecs
 import os
+import shutil
 import sqlite3
 import sys
 
@@ -132,6 +133,7 @@ def redirect_handler_class(port, paths_file):
 
 
 def list_paths_cmd(args):
+    term_width = shutil.get_terminal_size().columns
     with sqlite3.connect(args.paths_file) as db:
         records = []
         if args.short:
@@ -150,7 +152,10 @@ def list_paths_cmd(args):
 
     if records:
         left_width = max([len(short) for short, *_ in records])
-        right_width = 60  # totally arbitrary
+        # minimum full link display length 30
+        # 12 comes from: arrow and pad (3+2) + left number and pad (3+1) \
+        #   + implicit right pad (3) = 12
+        right_width = max(term_width - left_width - 12, 80)
         for short, full, visits in records:
             if len(full) >= right_width:
                 if args.long:
