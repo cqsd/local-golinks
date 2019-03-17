@@ -259,7 +259,7 @@ def run_server_cmd(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser('go-slash', description='Local go/ server admin tool')
+    parser = argparse.ArgumentParser('slash', description='Local go/ server admin tool')
     parser.set_defaults(func=None)
     parser.add_argument(
         '-f',
