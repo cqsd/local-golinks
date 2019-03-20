@@ -68,7 +68,7 @@ def load_paths(paths_file):
 def redirect_handler_class(port, paths_file):
     class RedirectServerHandler(BaseHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
-            self.host = 'buy-local'
+            self.host = os.uname().nodename  # supposedly doesn't work on windows
             self.port = port
             self.paths_file = paths_file
             self.db = sqlite3.connect(paths_file)
@@ -180,8 +180,7 @@ def add_path_cmd(args):
 
 
 def rm_path_cmd(args):
-    _short = args.short
-    for short in _short:
+    for short in args.short:
         with sqlite3.connect(args.paths_file) as db:
             record = db.execute(
                 'select short, full from Links where short = ?',
