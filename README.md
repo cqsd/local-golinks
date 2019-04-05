@@ -69,3 +69,38 @@ Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
 
 Assuming you've added the `/etc/hosts` entry, you can now go to `go/tweet`
 in your browser, and will be redirected to Twitter.
+
+
+#### Broken-ish Example: Launchd target
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bigYeet.agent</string>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/python3</string>
+        <string>/path/to/local-go-slash/slash</string>
+        <string>-f</string>
+        <string>/path/to/local-go-slash/links.db</string>
+        <string>run</string>
+        <string>80</string>
+    </array>
+    <key>StandardErrorPath</key>
+    <string>/tmp/local-go-slash.error</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/local-go-slash.log</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <false/>
+    </dict>
+</dict>
+</plist>
+```
