@@ -71,7 +71,8 @@ Assuming you've added the `/etc/hosts` entry, you can now go to `go/tweet`
 in your browser, and will be redirected to Twitter.
 
 
-#### Broken-ish Example: Launchd target
+#### Sort of LaunchAgent
+Put this in `~/Library/LaunchAgents/`, replacing whatever values
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -104,3 +105,5 @@ in your browser, and will be redirected to Twitter.
 </dict>
 </plist>
 ```
+
+Log out and in, or start it immediately `launchctl start ~/Library/LaunchAgents/whatever`
